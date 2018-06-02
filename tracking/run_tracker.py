@@ -42,9 +42,9 @@ def forward_samples(model, image, samples, out_layer='conv3'):
 def set_optimizer(model, lr_base, lr_mult=opts['lr_mult'], momentum=opts['momentum'], w_decay=opts['w_decay']):
     params = model.get_learnable_params()
     param_list = []
-    for k, p in params.items():
+    for k, p in params.iteritems():
         lr = lr_base
-        for l, m in lr_mult.items():
+        for l, m in lr_mult.iteritems():
             if k.startswith(l):
                 lr = lr_base * m
         param_list.append({'params': [p], 'lr':lr})
@@ -301,11 +301,11 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
                 fig.savefig(os.path.join(savefig_dir,'%04d.jpg'%(i)),dpi=dpi)
 
         if gt is None:
-            print("Frame %d/%d, Score %.3f, Time %.3f" % \
-                (i, len(img_list), target_score, spf))
+            print "Frame %d/%d, Score %.3f, Time %.3f" % \
+                (i, len(img_list), target_score, spf)
         else:
-            print("Frame %d/%d, Overlap %.3f, Score %.3f, Time %.3f" % \
-                (i, len(img_list), overlap_ratio(gt[i],result_bb[i])[0], target_score, spf))
+            print "Frame %d/%d, Overlap %.3f, Score %.3f, Time %.3f" % \
+                (i, len(img_list), overlap_ratio(gt[i],result_bb[i])[0], target_score, spf)
 
     fps = len(img_list) / spf_total
     return result, result_bb, fps

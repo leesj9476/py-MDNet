@@ -3,7 +3,7 @@ from collections import OrderedDict
 opts = OrderedDict()
 opts['use_gpu'] = True
 
-opts['init_model_path'] = '../models/imagenet-vgg-m.mat'
+opts['init_model_path'] = '../models/resnet18.pth'
 opts['model_path'] = '../models/mdnet_vot-otb_new.pth'
 
 opts['batch_frames'] = 8

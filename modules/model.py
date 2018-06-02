@@ -7,10 +7,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
+import torchvision.models as models
 
 def append_params(params, module, prefix):
     for child in module.children():
-        for k,p in child._parameters.items():
+        for k,p in child._parameters.iteritems():
             if p is None: continue
             
             if isinstance(child, nn.BatchNorm2d):
@@ -47,24 +48,7 @@ class MDNet(nn.Module):
     def __init__(self, model_path=None, K=1):
         super(MDNet, self).__init__()
         self.K = K
-        self.layers = nn.Sequential(OrderedDict([
-                ('conv1', nn.Sequential(nn.Conv2d(3, 96, kernel_size=7, stride=2),
-                                        nn.ReLU(),
-                                        LRN(),
-                                        nn.MaxPool2d(kernel_size=3, stride=2))),
-                ('conv2', nn.Sequential(nn.Conv2d(96, 256, kernel_size=5, stride=2),
-                                        nn.ReLU(),
-                                        LRN(),
-                                        nn.MaxPool2d(kernel_size=3, stride=2))),
-                ('conv3', nn.Sequential(nn.Conv2d(256, 512, kernel_size=3, stride=1),
-                                        nn.ReLU())),
-                ('fc4',   nn.Sequential(nn.Dropout(0.5),
-                                        nn.Linear(512 * 3 * 3, 512),
-                                        nn.ReLU())),
-                ('fc5',   nn.Sequential(nn.Dropout(0.5),
-                                        nn.Linear(512, 512),
-                                        nn.ReLU()))]))
-        
+        self.layers = models.resnet18()        
         self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5), 
                                                      nn.Linear(512, 2)) for _ in range(K)])
         
@@ -85,7 +69,7 @@ class MDNet(nn.Module):
             append_params(self.params, module, 'fc6_%d'%(k))
 
     def set_learnable_params(self, layers):
-        for k, p in self.params.items():
+        for k, p in self.params.iteritems():
             if any([k.startswith(l) for l in layers]):
                 p.requires_grad = True
             else:
@@ -93,7 +77,7 @@ class MDNet(nn.Module):
  
     def get_learnable_params(self):
         params = OrderedDict()
-        for k, p in self.params.items():
+        for k, p in self.params.iteritems():
             if p.requires_grad:
                 params[k] = p
         return params
@@ -120,8 +104,9 @@ class MDNet(nn.Module):
             return F.softmax(x)
     
     def load_model(self, model_path):
-        states = torch.load(model_path)
-        shared_layers = states['shared_layers']
+        shared_layer = torch.load(model_path)
+        # need to fix input form
+
         self.layers.load_state_dict(shared_layers)
     
     def load_mat_model(self, matfile):
