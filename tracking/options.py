@@ -11,7 +11,7 @@ opts['padding'] = 16
 opts['batch_pos'] = 32
 opts['batch_neg'] = 96
 opts['batch_neg_cand'] = 1024
-opts['batch_test'] = 25
+opts['batch_test'] = 50
 
 opts['n_samples'] = 256
 opts['trans_f'] = 0.6

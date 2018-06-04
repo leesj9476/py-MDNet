@@ -7,11 +7,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
-import torchvision.models as models
 
 def append_params(params, module, prefix):
     for child in module.children():
-        for k,p in child._parameters.iteritems():
+        for k,p in child._parameters.items():
             if p is None: continue
             
             if isinstance(child, nn.BatchNorm2d):
@@ -43,12 +42,36 @@ class LRN(nn.Module):
         x = x / ((2.+0.0001*x_sumsq)**0.75)
         return x
 
+class ResNet18(nn.Module):
+    def __init__(self, model_path=None, K=1):
+        super(ResNet18, self).__init__()
+        self.K = K
+        self.layers = nn.Sequential()
+        self.branches = nn.ModuleList()
+
 
 class MDNet(nn.Module):
     def __init__(self, model_path=None, K=1):
         super(MDNet, self).__init__()
         self.K = K
-        self.layers = models.resnet18()        
+        self.layers = nn.Sequential(OrderedDict([
+                ('conv1', nn.Sequential(nn.Conv2d(3, 96, kernel_size=7, stride=2),
+                                        nn.ReLU(),
+                                        LRN(),
+                                        nn.MaxPool2d(kernel_size=3, stride=2))),
+                ('conv2', nn.Sequential(nn.Conv2d(96, 256, kernel_size=5, stride=2),
+                                        nn.ReLU(),
+                                        LRN(),
+                                        nn.MaxPool2d(kernel_size=3, stride=2))),
+                ('conv3', nn.Sequential(nn.Conv2d(256, 512, kernel_size=3, stride=1),
+                                        nn.ReLU())),
+                ('fc4',   nn.Sequential(nn.Dropout(0.5),
+                                        nn.Linear(512 * 3 * 3, 512),
+                                        nn.ReLU())),
+                ('fc5',   nn.Sequential(nn.Dropout(0.5),
+                                        nn.Linear(512, 512),
+                                        nn.ReLU()))]))
+        
         self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5), 
                                                      nn.Linear(512, 2)) for _ in range(K)])
         
@@ -58,7 +81,7 @@ class MDNet(nn.Module):
             elif os.path.splitext(model_path)[1] == '.mat':
                 self.load_mat_model(model_path)
             else:
-                raise RuntimeError("Unkown model format: %s" % (model_path))
+                raise RuntimeError("Unknown model format: %s" % (model_path))
         self.build_param_dict()
 
     def build_param_dict(self):
@@ -69,7 +92,7 @@ class MDNet(nn.Module):
             append_params(self.params, module, 'fc6_%d'%(k))
 
     def set_learnable_params(self, layers):
-        for k, p in self.params.iteritems():
+        for k, p in self.params.items():
             if any([k.startswith(l) for l in layers]):
                 p.requires_grad = True
             else:
@@ -77,7 +100,7 @@ class MDNet(nn.Module):
  
     def get_learnable_params(self):
         params = OrderedDict()
-        for k, p in self.params.iteritems():
+        for k, p in self.params.items():
             if p.requires_grad:
                 params[k] = p
         return params
@@ -93,6 +116,7 @@ class MDNet(nn.Module):
             if run:
                 x = module(x)
                 if name == 'conv3':
+
                     x = x.view(x.size(0),-1)
                 if name == out_layer:
                     return x
@@ -104,9 +128,9 @@ class MDNet(nn.Module):
             return F.softmax(x)
     
     def load_model(self, model_path):
-        shared_layer = torch.load(model_path)
-        # need to fix input form
-
+        states = torch.load(model_path)
+        print(states)
+        shared_layers = states['shared_layers']
         self.layers.load_state_dict(shared_layers)
     
     def load_mat_model(self, matfile):
@@ -117,9 +141,7 @@ class MDNet(nn.Module):
         for i in range(3):
             weight, bias = mat_layers[i*4]['weights'].item()[0]
             self.layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3,2,0,1)))
-            self.layers[i][0].bias.data = torch.from_numpy(bias[:,0])
-
-    
+            self.layers[i][0].bias.data = torch.from_numpy(bias[:,0])    
 
 class BinaryLoss(nn.Module):
     def __init__(self):

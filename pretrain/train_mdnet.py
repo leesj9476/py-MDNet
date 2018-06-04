@@ -31,14 +31,15 @@ def train_mdnet():
     
     ## Init dataset ##
     with open(data_path, 'rb') as fp:
-        data = pickle.load(fp)
+        data = pickle.load(fp, encoding='latin1')
 
     K = len(data)
     dataset = [None]*K
-    for k, (seqname, seq) in enumerate(data.iteritems()):
+    for k, (seqname, seq) in enumerate(data.items()):
         img_list = seq['images']
         gt = seq['gt']
         img_dir = os.path.join(img_home, seqname)
+
         dataset[k] = RegionDataset(img_dir, img_list, gt, opts)
 
     ## Init model ##
@@ -54,7 +55,7 @@ def train_mdnet():
 
     best_prec = 0.
     for i in range(opts['n_cycles']):
-        print "==== Start Cycle %d ====" % (i)
+        print ("==== Start Cycle %d ====" % (i))
         k_list = np.random.permutation(K)
         prec = np.zeros(K)
         for j,k in enumerate(k_list):
@@ -80,17 +81,17 @@ def train_mdnet():
             prec[k] = evaluator(pos_score, neg_score)
 
             toc = time.time()-tic
-            print "Cycle %2d, K %2d (%2d), Loss %.3f, Prec %.3f, Time %.3f" % \
-                    (i, j, k, loss.data[0], prec[k], toc)
+            print ("Cycle %2d, K %2d (%2d), Loss %.3f, Prec %.3f, Time %.3f" % \
+                    (i, j, k, loss.data[0], prec[k], toc))
 
         cur_prec = prec.mean()
-        print "Mean Precision: %.3f" % (cur_prec)
+        print ("Mean Precision: %.3f" % (cur_prec))
         if cur_prec > best_prec:
             best_prec = cur_prec
             if opts['use_gpu']:
                 model = model.cpu()
             states = {'shared_layers': model.layers.state_dict()}
-            print "Save model to %s" % opts['model_path']
+            print ("Save model to %s" % opts['model_path'])
             torch.save(states, opts['model_path'])
             if opts['use_gpu']:
                 model = model.cuda()
@@ -98,4 +99,3 @@ def train_mdnet():
 
 if __name__ == "__main__":
     train_mdnet()
-
