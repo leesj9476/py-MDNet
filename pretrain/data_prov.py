@@ -1,14 +1,12 @@
 import os
-import sys
-import numpy as np
 from PIL import Image
 
 import torch
 import torch.utils.data as data
 
-sys.path.insert(0,'../modules')
-from sample_generator import *
-from utils import *
+from modules.sample_generator import *
+from modules.utils import *
+
 
 class RegionDataset(data.Dataset):
     def __init__(self, img_dir, img_list, gt, opts):
